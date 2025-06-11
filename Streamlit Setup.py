@@ -41,11 +41,14 @@ dichte = st.slider("Leer ←→ Überladen", 0.0, 1.0, 0.5)
 
 # --- EMOTIONALE WIRKUNG ---
 st.subheader("❤️ Emotionale Wirkung")
-emotion = st.selectbox(
-    "Wähle eine Emotion aus:",
+emotionen = st.multiselect(
+    "Wähle bis zu zwei Emotionen:",
     ["Fröhlich", "Traurig", "Party", "Luxuriös", "Melancholisch",
-     "Entspannt", "Energetisch", "Rhythmisch", "Bedrohlich", "Verträumt"]
+     "Entspannt", "Energetisch", "Rhythmisch", "Bedrohlich", "Verträumt", "Düster",
+     "Aetherisch"],
+    max_selections=2
 )
+
 
 # --- ÄHNLICHE SONGS BASIEREND AUF FARBE 1 ---
 def hex_to_rgb(hex_code):
