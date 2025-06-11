@@ -41,7 +41,7 @@ dichte = st.slider("Leer ←→ Überladen", 0.0, 1.0, 0.5)
 
 # --- EMOTIONALE WIRKUNG ---
 st.subheader("❤️ Emotionale Wirkung")
-emotionen = st.multiselect(
+emotion = st.multiselect(
     "Wähle bis zu zwei Emotionen:",
     ["Fröhlich", "Traurig", "Party", "Luxuriös", "Melancholisch",
      "Entspannt", "Energetisch", "Rhythmisch", "Bedrohlich", "Verträumt", "Düster",
