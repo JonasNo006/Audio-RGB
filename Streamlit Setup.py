@@ -19,9 +19,13 @@ creds = Credentials.from_service_account_info(st.secrets["gsheets"], scopes=SCOP
 client = gspread.authorize(creds)
 sheet = client.open(SHEET_NAME).sheet1
 
+# Daten laden
 records = sheet.get_all_records()
 df = pd.DataFrame(records)
-if df.empty or df.columns[0] == "":
+
+# Header prüfen
+header_row = sheet.row_values(1)
+if header_row != SPALTEN:
     sheet.clear()
     sheet.append_row(SPALTEN)
     df = pd.DataFrame(columns=SPALTEN)
@@ -47,6 +51,7 @@ emotion = st.multiselect(
     max_selections=2
 )
 
+# === ÄHNLICHE SONGS ===
 st.sidebar.title("🔍 Ähnliche Songs nach Farbe 1")
 
 def hex_to_rgb(h): return ImageColor.getcolor(h, "RGB")
@@ -62,18 +67,18 @@ if not df.empty:
         st.sidebar.markdown(f"**🎵 {row['Song']}**  \n*{row['Emotion']}*")
         for j in range(3):
             cols[j].markdown(
-                f"<div style='width:30px;height:30px;background:{row[f'Farbe {j+1}']};'></div>",
+                f"<div style='width:30px;height:30px;background:{row.get(f'Farbe {j+1}', '#FFFFFF')};'></div>",
                 unsafe_allow_html=True
             )
 
 # === SPEICHERN BUTTON ===
 if st.button("💾 Ergebnisse speichern"):
     if not song.strip():
-        st.warning("Bitte Song eingeben!")
+        st.warning("❗ Bitte Songtitel eingeben.")
     elif song.strip() in df["Song"].astype(str).tolist():
-        st.warning("Song existiert bereits.")
+        st.warning("⚠️ Dieser Song wurde bereits gespeichert.")
     else:
-        entry = [
+        eintrag = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             song.strip(), farbe1, farbe2, farbe3,
             float(kalt_warm), float(grell_pastell),
@@ -81,7 +86,7 @@ if st.button("💾 Ergebnisse speichern"):
             float(farbverlauf), float(dichte),
             ", ".join(emotion)
         ]
-        sheet.append_row(entry)
+        sheet.append_row(eintrag)
         st.success("✅ Gespeichert!")
         st.experimental_rerun()
 
@@ -94,9 +99,8 @@ if st.button("📋 Alle gespeicherten Songs anzeigen"):
     else:
         st.subheader("🎶 Alle Songs")
         for _, row in df_all.iterrows():
-            c0,c1,c2,c3 = st.columns([7,1,1,1])
-            c0.markdown(f"**🎵 {row['Song']}**  \n<small><i>{row['Emotion']}</i></small>", unsafe_allow_html=True)
+            c0, c1, c2, c3 = st.columns([7,1,1,1])
+            c0.markdown(f"**🎵 {row['Song']}**<br><i>{row['Emotion']}</i>", unsafe_allow_html=True)
             for i in range(3):
-                c1 if i==0 else c2 if i==1 else c3
-                c = [c1,c2,c3][i]
-                c.markdown(f"<div style='width:20px;height:20px;background:{row[f'Farbe {i+1}']};'></div>", unsafe_allow_html=True)
+                c = [c1, c2, c3][i]
+                c.markdown(f"<div style='width:20px;height:20px;background:{row.get(f'Farbe {i+1}', '#FFFFFF')};'></div>", unsafe_allow_html=True)
