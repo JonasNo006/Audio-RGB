@@ -6,12 +6,53 @@ from PIL import ImageColor
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- GOOGLE SHEETS VERBINDUNG ---
-SHEET_NAME = "Farb Wahrnehmung"  # Name deines Google Sheets
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(st.secrets["gsheets"], scopes=scope)
+
+
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
+
+# --- Google Sheets Setup ---
+SHEET_NAME = "FarbWahrnehmung"  # kein .xlsx!
+SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(st.secrets["gsheets"], scopes=SCOPE)
 client = gspread.authorize(creds)
 sheet = client.open(SHEET_NAME).sheet1
+
+# --- Erwartete Spalten ---
+SPALTEN = [
+    "Zeitstempel", "Song", "Farbe 1", "Farbe 2", "Farbe 3",
+    "Kalt-Warm", "Grell-Pastell", "Form (rund-spitz)", "Formdynamik",
+    "Farbübergänge", "Visuelle Dichte", "Emotion"
+]
+
+# --- Bestehende Daten laden ---
+records = sheet.get_all_records()
+df = pd.DataFrame(records)
+
+# 🛠 Fallback: Wenn das Sheet leer ist, erstelle Header-Zeile
+if df.empty or df.columns[0] == "":
+    sheet.clear()
+    sheet.append_row(SPALTEN)
+    df = pd.DataFrame(columns=SPALTEN)
+
+# 🧠 Ergebnis aus Streamlit-Eingaben speichern
+neuer_eintrag = {
+    "Zeitstempel": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    "Song": song.strip(),
+    "Farbe 1": farbe1,
+    "Farbe 2": farbe2,
+    "Farbe 3": farbe3,
+    "Kalt-Warm": kalt_warm,
+    "Grell-Pastell": grell_pastell,
+    "Form (rund-spitz)": form_slider,
+    "Formdynamik": dynamik_slider,
+    "Farbübergänge": farbverlauf,
+    "Visuelle Dichte": dichte,
+    "Emotion": ", ".join(emotion),  # als String speichern
+}
 
 st.set_page_config(page_title="🎶 Farb-Musik-Wahrnehmung", layout="centered")
 st.title("🎨 Visuelle Wahrnehmung & Songanalyse")
@@ -113,6 +154,13 @@ if st.button("💾 Ergebnisse speichern"):
 
         sheet.append_row(neue_zeile)
         st.success(f"✅ Gespeichert in Google Sheet: {SHEET_NAME}")
+
+# ✅ Duplikatprüfung
+    if song.strip() in df["Song"].values:
+        st.warning("Dieser Song wurde bereits gespeichert.")
+    else:
+        sheet.append_row(list(neuer_eintrag.values()))
+        st.success("✅ Song erfolgreich gespeichert!")
 
 # --- ANZEIGE ALLER EINTRÄGE ---
 if st.button("📋 Alle gespeicherten Songs anzeigen"):
