@@ -81,6 +81,13 @@ try:
     df["Farbdistanz"] = df["Farbe 1 RGB"].apply(lambda rgb: farbdistanz(rgb, aktuelle_rgb))
     ähnliche = df.sort_values("Farbdistanz").head(5)
 
-    for _, row in ähnliche.iterrows():
-        st.sidebar.markdown(f"**🎵 {row['Song']}**  \n💡 Emotion: *{row['Emotion']}*")
-        farben = [row["Farbe 1"], row["Farbe 2"], row["F]()]()
+for _, row in ähnliche.iterrows():
+    st.sidebar.markdown(f"**🎵 {row['Song']}**  \n💡 Emotion: *{row['Emotion']}*")
+    farben = [row["Farbe 1"], row["Farbe 2"], row["Farbe 3"]]
+    cols = st.sidebar.columns(3)
+    for i, col in enumerate(cols):
+        col.markdown(
+            f'<div style="width:30px; height:30px; background-color:{farben[i]}; border-radius:5px; margin-bottom:5px;"></div>',
+            unsafe_allow_html=True
+        )
+
