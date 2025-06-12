@@ -6,7 +6,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # === CONFIG ===
-SHEET_NAME = "FarbWahrnehmung"  # Name deines Google Sheets
+SHEET_NAME = "FarbMusik"  # Name deines Google Sheets (ohne .xlsx)
 SCOPE = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -36,6 +36,7 @@ st.set_page_config(page_title="🎶 Farb-Musik-Wahrnehmung", layout="centered")
 st.title("🎨 Visuelle Wahrnehmung & Songanalyse")
 
 song = st.text_input("🎵 Aktueller Songtitel oder Spotify-Link:")
+
 st.subheader("🎨 Hauptfarben (bis zu 3)")
 farbe1 = st.color_picker("Farbe 1", "#FF0000")
 farbe2 = st.color_picker("Farbe 2", "#00FF00")
@@ -76,18 +77,73 @@ def farbdistanz(rgb1, rgb2):
 st.sidebar.title("🔍 Ähnliche Songs nach Farbe 1")
 
 try:
-    aktuelle_rgb = hex_to_rgb(farbe1)
-    df["Farbe 1 RGB"] = df["Farbe 1"].apply(hex_to_rgb)
-    df["Farbdistanz"] = df["Farbe 1 RGB"].apply(lambda rgb: farbdistanz(rgb, aktuelle_rgb))
-    ähnliche = df.sort_values("Farbdistanz").head(5)
+    if not df.empty:
+        aktuelle_rgb = hex_to_rgb(farbe1)
+        df["Farbe 1 RGB"] = df["Farbe 1"].apply(hex_to_rgb)
+        df["Farbdistanz"] = df["Farbe 1 RGB"].apply(lambda rgb: farbdistanz(rgb, aktuelle_rgb))
+        ähnliche = df.sort_values("Farbdistanz").head(5)
 
-for _, row in ähnliche.iterrows():
-    st.sidebar.markdown(f"**🎵 {row['Song']}**  \n💡 Emotion: *{row['Emotion']}*")
-    farben = [row["Farbe 1"], row["Farbe 2"], row["Farbe 3"]]
-    cols = st.sidebar.columns(3)
-    for i, col in enumerate(cols):
-        col.markdown(
-            f'<div style="width:30px; height:30px; background-color:{farben[i]}; border-radius:5px; margin-bottom:5px;"></div>',
-            unsafe_allow_html=True
-        )
+        for _, row in ähnliche.iterrows():
+            st.sidebar.markdown(f"**🎵 {row['Song']}**  \n💡 Emotion: *{row['Emotion']}*")
+            farben = [row["Farbe 1"], row["Farbe 2"], row["Farbe 3"]]
+            cols = st.sidebar.columns(3)
+            for i, col in enumerate(cols):
+                col.markdown(
+                    f'<div style="width:30px; height:30px; background-color:{farben[i]}; border-radius:5px; margin-bottom:5px;"></div>',
+                    unsafe_allow_html=True
+                )
+except Exception:
+    st.sidebar.info("Keine ähnlichen Songs gefunden oder Fehler bei der Farbberechnung.")
 
+# === SPEICHERN ===
+if st.button("💾 Ergebnisse speichern"):
+    if song.strip() == "":
+        st.warning("Bitte gib einen Songtitel oder Link ein.")
+    else:
+        neuer_eintrag = {
+            "Zeitstempel": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Song": song.strip(),
+            "Farbe 1": farbe1,
+            "Farbe 2": farbe2,
+            "Farbe 3": farbe3,
+            "Kalt-Warm": kalt_warm,
+            "Grell-Pastell": grell_pastell,
+            "Form (rund-spitz)": form_slider,
+            "Formdynamik": dynamik_slider,
+            "Farbübergänge": farbverlauf,
+            "Visuelle Dichte": dichte,
+            "Emotion": ", ".join(emotion)
+        }
+
+        # Check auf Duplikate anhand des Songtitels
+        if not df.empty and song.strip() in df["Song"].values:
+            # Lösche den alten Eintrag
+            df = df[df["Song"] != song.strip()]
+
+        df = pd.concat([df, pd.DataFrame([neuer_eintrag])], ignore_index=True)
+
+        # Google Sheet aktualisieren
+        sheet.clear()
+        sheet.append_row(SPALTEN)
+        sheet.append_rows(df.values.tolist())
+
+        st.success(f"✅ Gespeichert: {song.strip()}")
+
+# Alle gespeicherten Songs anzeigen
+if st.button("📋 Alle gespeicherten Songs anzeigen"):
+    if not df.empty:
+        st.subheader("🎶 Alle gespeicherten Songs")
+        for _, row in df.iterrows():
+            cols = st.columns([7, 1, 1, 1])
+            cols[0].markdown(
+                f"**🎵 {row['Song']}**  \n<small><i>{row['Emotion']}</i></small>",
+                unsafe_allow_html=True
+            )
+            farben = [row["Farbe 1"], row["Farbe 2"], row["Farbe 3"]]
+            for i in range(3):
+                cols[i+1].markdown(
+                    f'<div style="width:20px; height:20px; background-color:{farben[i]}; border-radius:4px;"></div>',
+                    unsafe_allow_html=True
+                )
+    else:
+        st.info("Keine gespeicherten Songs gefunden.")
