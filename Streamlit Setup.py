@@ -78,27 +78,42 @@ def hex_to_rgb(hex_code):
     return ImageColor.getcolor(hex_code, "RGB")
 
 def farbdistanz(rgb1, rgb2):
-    return sum((a - b) ** 2 for a, b in zip(rgb1, rgb2)) ** 0.5
+    return sum((a - b)**2 for a, b in zip(rgb1, rgb2)) ** 0.5
 
-st.sidebar.title("🔍 Ähnliche Songs nach Farbe 1")
+# Berechne Farbdistanzen
+def berechne_farbähnlichkeit(row, aktuelle_rgb1, aktuelle_rgb2, aktuelle_rgb3):
+    dist1 = farbdistanz(hex_to_rgb(row["Farbe 1"]), aktuelle_rgb1)
+    dist2 = farbdistanz(hex_to_rgb(row["Farbe 2"]), aktuelle_rgb2)
+    dist3 = farbdistanz(hex_to_rgb(row["Farbe 3"]), aktuelle_rgb3)
+    return (0.5 * dist1) + (0.35 * dist2) + (0.15 * dist3)
+
+# === ÄHNLICHE SONGS ===
+st.sidebar.title("🔍 Ähnliche Songs")
+
 try:
-    if not df.empty and "Farbe 1" in df.columns:
-        aktuelle_rgb = hex_to_rgb(farbe1)
-        df["Farbe 1 RGB"] = df["Farbe 1"].apply(hex_to_rgb)
-        df["Farbdistanz"] = df["Farbe 1 RGB"].apply(lambda rgb: farbdistanz(rgb, aktuelle_rgb))
-        ähnliche = df.sort_values("Farbdistanz").head(5)
+    aktuelle_rgb1 = hex_to_rgb(farbe1)
+    aktuelle_rgb2 = hex_to_rgb(farbe2)
+    aktuelle_rgb3 = hex_to_rgb(farbe3)
 
-        for _, row in ähnliche.iterrows():
-            st.sidebar.markdown(f"**🎵 {row['Song']}**  \n💡 Emotion: *{row.get('Emotion', '')}*")
-            farben = [row.get("Farbe 1", ""), row.get("Farbe 2", ""), row.get("Farbe 3", "")]
-            cols = st.sidebar.columns(3)
-            for i, col in enumerate(cols):
-                col.markdown(
-                    f'<div style="width:30px; height:30px; background-color:{farben[i]}; border-radius:5px;"></div>',
-                    unsafe_allow_html=True
-                )
+    df["Farbdistanz"] = df.apply(
+        lambda row: berechne_farbähnlichkeit(row, aktuelle_rgb1, aktuelle_rgb2, aktuelle_rgb3),
+        axis=1
+    )
+
+    ähnliche = df.sort_values("Farbdistanz").head(5)
+
+    for _, row in ähnliche.iterrows():
+        st.sidebar.markdown(f"**🎵 {row['Song']}**  \n💡 Emotion: *{row['Emotion']}*")
+        st.sidebar.markdown(
+            f"<div style='display:flex; gap:5px;'>"
+            f"<div style='width:20px;height:20px;background:{row['Farbe 1']};border-radius:3px;'></div>"
+            f"<div style='width:20px;height:20px;background:{row['Farbe 2']};border-radius:3px;'></div>"
+            f"<div style='width:20px;height:20px;background:{row['Farbe 3']};border-radius:3px;'></div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 except Exception as e:
-    st.sidebar.error("Fehler beim Vergleich ähnlicher Farben.")
+    st.sidebar.error("Ähnlichkeitsvergleich fehlgeschlagen.")
 
 # === SPEICHERN ===
 if st.button("💾 Ergebnisse speichern"):
